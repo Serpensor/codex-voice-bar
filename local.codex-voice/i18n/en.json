@@ -1,0 +1,6 @@
+{
+  "playback": "Speaker waveform. Click to open Codex terminal.",
+  "waiting": "Microphone input unavailable",
+  "mute": "Mute microphone",
+  "unmute": "Unmute microphone"
+}

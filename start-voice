@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+codex_args=()
+case "${1:-}" in
+  "") ;;
+  --full-access) codex_args=(--dangerously-bypass-approvals-and-sandbox) ;;
+  *) printf '%s\n' 'Usage: codex-voice-headless [--full-access]' >&2; exit 2 ;;
+esac
+if (( $# > 1 )); then
+  printf '%s\n' 'Usage: codex-voice-headless [--full-access]' >&2
+  exit 2
+fi
+
+codex=${CODEX_VOICE_BIN:-$(command -v codex || true)}
+codex=${codex:-$HOME/.local/share/mise/installs/codex/global/bin/codex}
+if [[ ! -x "$codex" ]]; then
+  printf '%s\n' 'Codex CLI unavailable. Install it or set CODEX_VOICE_BIN.' >&2
+  exit 1
+fi
+
+workspace=${CODEX_VOICE_WORKSPACE:-$HOME/Work}
+[[ -d "$workspace" ]] || workspace="$HOME"
+session="codex-voice:0.0"
+mux=(tmux -L omarchy-codex-voice -f /dev/null)
+
+if ! "${mux[@]}" has-session -t '=codex-voice' 2>/dev/null; then
+  "${mux[@]}" new-session -d -s codex-voice -c "$workspace" \
+    -x 100 -y 30 bash -c 'exec "$@"' codex-voice "$codex" "${codex_args[@]}"
+
+  # Wait for the Codex composer, then run the built-in voice command in this pane.
+  for ((attempt = 0; attempt < 180; attempt++)); do
+    if ! screen=$("${mux[@]}" capture-pane -p -t "$session"); then
+      exit 1
+    fi
+    if [[ "$screen" == *'? for shortcuts'* ]]; then
+      "${mux[@]}" send-keys -t "$session" -l '/voice'
+      sleep 0.25
+      "${mux[@]}" send-keys -t "$session" Enter
+      sleep 0.5
+      screen=$("${mux[@]}" capture-pane -p -t "$session")
+      if [[ "$screen" == *'› /voice'* && "$screen" != *'voice ●'* ]]; then
+        "${mux[@]}" send-keys -t "$session" Enter
+      fi
+      break
+    fi
+    sleep 0.25
+  done
+fi

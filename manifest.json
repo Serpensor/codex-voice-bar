@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "serpensor.codex-voice",
+  "name": "Codex Voice",
+  "version": "1.1.0",
+  "description": "Microphone and playback levels with a background Codex voice session",
+  "kinds": ["bar-widget"],
+  "entryPoints": {"barWidget": "local.codex-voice/Widget.qml"},
+  "barWidget": {
+    "displayName": "Codex Voice",
+    "category": "AI & Automation",
+    "defaultSection": "centerEnd",
+    "allowMultiple": false
+  }
+}

@@ -1,50 +1,81 @@
-# Codex Voice on Omarchy
+# Codex Voice for Omarchy
 
-Put scrolling microphone and speaker waveforms next to the clock. Click the mic to mute or unmute the default system input. A slash marks the muted state. Click the speaker to open the background Codex terminal.
+A native Omarchy bar widget for the Codex CLI voice session. Two waveforms show microphone and speaker activity. Click the microphone to mute or unmute the default input; click the speaker to open the background Codex terminal.
 
-## Install
-
-Requires Omarchy with Quickshell bar plugins, PipeWire with PulseAudio compatibility, Python 3, tmux, and a signed-in Codex CLI with the interactive `/voice` command.
-
-From this directory, run:
+## Install with the Omarchy plugin manager
 
 ```sh
-python3 install.py --login
-omarchy restart shell
+omarchy plugin add https://github.com/Serpensor/codex-voice-bar.git --enable
 ```
 
-Voice starts in a background tmux session at the next graphical login. To start it now, run `~/.local/bin/codex-voice-headless`. Leave off `--login` to install the bar widget and launcher without adding a login entry. The launcher starts in `~/Work` if it exists, otherwise in your home directory. Set `CODEX_VOICE_WORKSPACE` or `CODEX_VOICE_BIN` to override the defaults.
-
-The mic display reads the default input locally. The speaker display follows the background Codex playback stream when it can identify it and otherwise shows the default speaker output. The widget keeps only a short history of audio levels in memory. The separate Codex voice session uses the signed-in account and may send microphone audio to the voice service.
-
-## Full access at login
-
-The standard launcher uses your existing Codex permissions. To reproduce the full-access setup, install with:
+The manager validates the plugin manifest, installs it into Omarchy's plugin directory, and enables it beside the clock. Use the normal plugin commands to manage it:
 
 ```sh
-python3 install.py --login --full-access
+omarchy plugin disable serpensor.codex-voice
+omarchy plugin enable serpensor.codex-voice
+omarchy bar move serpensor.codex-voice --section right
+omarchy plugin update serpensor.codex-voice
+omarchy plugin remove serpensor.codex-voice
 ```
 
-This starts Codex at login with filesystem sandboxing and command approval prompts disabled. Voice commands can then act with your Linux user permissions. For a manual launch, pass `--full-access` to `~/.local/bin/codex-voice-headless`. To restore the standard login command, rerun `python3 install.py --login`. A running session keeps the permissions it started with until it exits.
+### Migrate from the earlier manual installer
 
-## Survive Omarchy updates
-
-The installer saves a copy of the widget, launcher, and selected login settings in `~/.local/share/codex-voice-bar`. An Omarchy post-update hook reapplies them after updates. It keeps the widget in its current position when present and puts it back next to the clock if it was removed from the layout. To repair the setup after a manual configuration reset, run:
+The previous installer copied the widget to `local.codex-voice` and restored it after Omarchy updates. Remove that old restore hook and widget before adding the manager-managed plugin:
 
 ```sh
-python3 ~/.local/share/codex-voice-bar/install.py --restore
+rm ~/.config/omarchy/hooks/post-update.d/codex-voice-bar-restore
+omarchy plugin remove local.codex-voice
+omarchy plugin add https://github.com/Serpensor/codex-voice-bar.git --enable
 ```
 
-Rerun the package installer with the options you want to change the saved settings. Running it without `--login` disables managed login startup.
+If the old login startup was enabled, keep it by running the new `install.py --login` command after installing the plugin. Add `--full-access` only if that was your previous setting and you want to retain it.
+
+Requirements: Omarchy with shell plugins, PipeWire with PulseAudio compatibility, Python 3, `tmux`, and a signed-in Codex CLI with the interactive `/voice` command.
+
+## Start Codex Voice at login (optional)
+
+The bar widget can be used without automatic startup. To launch its Codex voice session at graphical login, run:
+
+```sh
+python3 ~/.config/omarchy/plugins/serpensor.codex-voice/install.py --login
+```
+
+To start Codex with sandboxing and approval prompts disabled, explicitly use:
+
+```sh
+python3 ~/.config/omarchy/plugins/serpensor.codex-voice/install.py --login --full-access
+```
+
+To remove login startup while keeping the widget installed:
+
+```sh
+python3 ~/.config/omarchy/plugins/serpensor.codex-voice/install.py --disable-login
+```
+
+The optional launcher uses your existing Codex permissions by default. The full-access option disables Codex sandboxing and command approval prompts, so voice requests can act with your Linux user permissions. A running session keeps the permissions it started with until it exits.
+
+The launcher uses `~/Work` when it exists, otherwise your home directory. Set `CODEX_VOICE_WORKSPACE` or `CODEX_VOICE_BIN` to override the defaults. The microphone meter reads the default input locally. The speaker meter follows the Codex playback stream when it can identify it and otherwise shows the default speaker output. Only a short history of audio levels is kept in memory. Codex voice sends microphone audio to the voice service.
 
 ## Remove
 
-Remove `~/.config/omarchy/hooks/post-update.d/codex-voice-bar-restore` and `~/.local/share/codex-voice-bar` first to disable automatic restoration.
+If login startup is enabled, disable it first:
 
-Remove the `local.codex-voice` entry from the bar layout in `~/.config/omarchy/shell.json` and the `codex-voice-headless` startup line from `~/.config/hypr/autostart.lua`. The installer saves original copies alongside the files with the suffix `.before-codex-voice-bar`. Applying those backups also rolls back any later edits to the files.
+```sh
+python3 ~/.config/omarchy/plugins/serpensor.codex-voice/install.py --disable-login
+```
 
-Stop the background session with `tmux -L omarchy-codex-voice kill-session -t '=codex-voice'`. Remove `~/.config/omarchy/plugins/local.codex-voice` and `~/.local/bin/codex-voice-headless`, then run `omarchy restart shell`.
+Then remove the plugin through the manager:
 
-## Prototype limits
+```sh
+omarchy plugin remove serpensor.codex-voice
+```
 
-The launcher waits for the Codex composer prompt in tmux and sends `/voice`. This depends on the current Codex TUI and may need updating if the prompt or command changes. If Codex opens a sign-in or setup prompt, use the speaker button to attach to the terminal and finish setup.
+Stop an already-running voice session with:
+
+```sh
+tmux -L omarchy-codex-voice kill-session -t '=codex-voice'
+```
+
+## Compatibility note
+
+The login launcher waits for the Codex TUI composer and sends `/voice`. This follows the Codex CLI's interactive interface and may need an update if that interface changes. If Codex opens a sign-in or setup prompt, click the speaker widget to open its terminal and finish setup.
